@@ -1,780 +1,788 @@
-name: Build Production Mega-TOR Aggregator Engine & Release APKon:
-push:
-branches: [ "main", "master" ]
-pull_request:
-branches: [ "main", "master" ]
-workflow_dispatch:concurrency:
-group: ${{ github.workflow }}-${{ github.ref }}
-cancel-in-progress: truejobs:
-build-and-generate-apk:
-name: Generate Full Codebase & Build Signed Release APK
-runs-on: ubuntu-lateststeps:
-  - name: 🚀 Checkout Repository Source Code
-    uses: actions/checkout@v4
-    with:
-      fetch-depth: 0
+name: Build Production Mega-TOR Aggregator Engine & Release APK
 
-  - name: ☕ Set up JDK 17
-    uses: actions/setup-java@v4
-    with:
-      java-version: '17'
-      distribution: 'temurin'
-      cache: 'gradle'
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
-  - name: 🛠️ Set up Android SDK & Build Tools
-    uses: actions/setup-android@v3
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-  - name: 📁 Generate Complete Project Structure & Native Kotlin Source Code
-    run: |
-      echo "=========================================="
-      echo "🏗️ Constructing Full Android Enterprise Codebase"
-      echo "=========================================="
+jobs:
+  build-and-generate-apk:
+    name: Generate Full Codebase & Build Signed Release APK
+    runs-on: ubuntu-latest
 
-      # Create directory structure
-      mkdir -p app/src/main/java/com/megator/aggregator/engine
-      mkdir -p app/src/main/java/com/megator/aggregator/ui
-      mkdir -p app/src/main/java/com/megator/aggregator/models
-      mkdir -p app/src/main/java/com/megator/aggregator/services
-      mkdir -p app/src/main/res/layout
-      mkdir -p app/src/main/res/values
-      mkdir -p app/src/main/res/drawable
-      mkdir -p app/src/main/assets/pycode
+    steps:
+      - name: 🚀 Checkout Repository Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Build settings.gradle
-      cat << 'EOF' > settings.gradle
-      pluginManagement {
-          repositories {
-              google()
-              mavenCentral()
-              gradlePluginPortal()
+      - name: ☕ Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: 🛠️ Set up Android SDK & Build Tools
+        uses: actions/setup-android@v3
+
+      - name: 📁 Generate Complete Project Structure & Native Kotlin Source Code
+        run: |
+          echo "=========================================="
+          echo "🏗️ Constructing Full Android Enterprise Codebase"
+          echo "=========================================="
+
+          # Create directory structure
+          mkdir -p app/src/main/java/com/megator/aggregator/engine
+          mkdir -p app/src/main/java/com/megator/aggregator/ui
+          mkdir -p app/src/main/java/com/megator/aggregator/models
+          mkdir -p app/src/main/java/com/megator/aggregator/services
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/assets/pycode
+
+          # Build settings.gradle
+          cat << 'EOF' > settings.gradle
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
           }
-      }
-      dependencyResolutionManagement {
-          repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-          repositories {
-              google()
-              mavenCentral()
-              maven { url 'https://jitpack.io' }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url 'https://jitpack.io' }
+              }
           }
-      }
-      rootProject.name = "MegaTORAggregator"
-      include ':app'
-      EOF
+          rootProject.name = "MegaTORAggregator"
+          include ':app'
+          EOF
 
-      # Root build.gradle
-      cat << 'EOF' > build.gradle
-      buildscript {
-          repositories {
-              google()
-              mavenCentral()
+          # Root build.gradle
+          cat << 'EOF' > build.gradle
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.2.2'
+                  classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'
+              }
           }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          task clean(type: Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+
+          # App build.gradle
+          cat << 'EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+
+          android {
+              namespace 'com.megator.aggregator'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.megator.aggregator"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 100
+                  versionName "1.0.0"
+                  testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+                  vectorDrawables {
+                      useSupportLibrary true
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+              buildFeatures {
+                  viewBinding true
+              }
+          }
+
           dependencies {
-              classpath 'com.android.tools.build:gradle:8.2.2'
-              classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'
+              implementation 'androidx.core:core-ktx:1.12.0'
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.11.0'
+              implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+              implementation 'androidx.recyclerview:recyclerview:1.3.2'
+              implementation 'androidx.cardview:cardview:1.0.0'
+              implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+              implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+              implementation 'com.google.code.gson:gson:2.10.1'
+              implementation 'com.caverock:androidsvg-aar:1.4'
           }
-      }
-      allprojects {
-          repositories {
-              google()
-              mavenCentral()
-          }
-      }
-      task clean(type: Delete) {
-          delete rootProject.buildDir
-      }
-      EOF
+          EOF
 
-      # App build.gradle
-      cat << 'EOF' > app/build.gradle
-      plugins {
-          id 'com.android.application'
-          id 'org.jetbrains.kotlin.android'
-      }
+          # AndroidManifest.xml
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-      android {
-          namespace 'com.megator.aggregator'
-          compileSdk 34
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-          defaultConfig {
-              applicationId "com.megator.aggregator"
-              minSdk 24
-              targetSdk 34
-              versionCode 100
-              versionName "1.0.0"
-              testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-              vectorDrawables {
-                  useSupportLibrary true
+              <application
+                  android:name=".MegaTorApplication"
+                  android:allowBackup="true"
+                  android:label="Mega-TOR Aggregator"
+                  android:supportsRtl="true"
+                  android:theme="@style/Theme.MegaTorAggregator">
+                  
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <service 
+                      android:name=".services.StorageAggregationService"
+                      android:enabled="true"
+                      android:exported="false"
+                      android:foregroundServiceType="dataSync" />
+
+              </application>
+          </manifest>
+          EOF
+
+          # res/values/strings.xml & styles.xml
+          cat << 'EOF' > app/src/main/res/values/strings.xml
+          <resources>
+              <string name="app_name">Mega-TOR Aggregator</string>
+          </resources>
+          EOF
+
+          cat << 'EOF' > app/src/main/res/values/themes.xml
+          <resources>
+              <style name="Theme.MegaTorAggregator" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+                  <item name="colorPrimary">#6200EE</item>
+                  <item name="colorPrimaryVariant">#3700B3</item>
+                  <item name="colorOnPrimary">#FFFFFF</item>
+              </style>
+          </resources>
+          EOF
+
+      - name: 🧠 Generate Complete Kotlin Application, UI & Service Engine
+        run: |
+          # 1. Main Application
+          cat << 'EOF' > app/src/main/java/com/megator/aggregator/MegaTorApplication.kt
+          package com.megator.aggregator
+
+          import android.app.Application
+          import android.app.NotificationChannel
+          import android.app.NotificationManager
+          import android.os.Build
+
+          class MegaTorApplication : Application() {
+
+              companion object {
+                  const val CHANNEL_ID = "MegaTorServiceChannel"
+                  lateinit var instance: MegaTorApplication
+                      private set
               }
-          }
 
-          buildTypes {
-              release {
-                  minifyEnabled false
-                  proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+              override fun onCreate() {
+                  super.onCreate()
+                  instance = this
+                  createNotificationChannel()
               }
-          }
-          compileOptions {
-              sourceCompatibility JavaVersion.VERSION_17
-              targetCompatibility JavaVersion.VERSION_17
-          }
-          kotlinOptions {
-              jvmTarget = '17'
-          }
-          buildFeatures {
-              viewBinding true
-          }
-      }
 
-      dependencies {
-          implementation 'androidx.core:core-ktx:1.12.0'
-          implementation 'androidx.appcompat:appcompat:1.6.1'
-          implementation 'com.google.android.material:material:1.11.0'
-          implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-          implementation 'androidx.recyclerview:recyclerview:1.3.2'
-          implementation 'androidx.cardview:cardview:1.0.0'
-          implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
-          implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-          implementation 'com.google.code.gson:gson:2.10.1'
-          implementation 'com.caverock:androidsvg-aar:1.4'
-      }
-      EOF
-
-      # AndroidManifest.xml
-      cat << 'EOF' > app/src/main/AndroidManifest.xml
-      <?xml version="1.0" encoding="utf-8"?>
-      <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-          <uses-permission android:name="android.permission.INTERNET" />
-          <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-          <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
-          <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-          <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-          <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-          <application
-              android:name=".MegaTorApplication"
-              android:allowBackup="true"
-              android:label="Mega-TOR Aggregator"
-              android:supportsRtl="true"
-              android:theme="@style/Theme.MegaTorAggregator">
-              
-              <activity
-                  android:name=".MainActivity"
-                  android:exported="true"
-                  android:windowSoftInputMode="adjustResize">
-                  <intent-filter>
-                      <action android:name="android.intent.action.MAIN" />
-                      <category android:name="android.intent.category.LAUNCHER" />
-                  </intent-filter>
-              </activity>
-
-              <service 
-                  android:name=".services.StorageAggregationService"
-                  android:enabled="true"
-                  android:exported="false"
-                  android:foregroundServiceType="dataSync" />
-
-          </application>
-      </manifest>
-      EOF
-
-      # res/values/strings.xml & styles.xml
-      cat << 'EOF' > app/src/main/res/values/strings.xml
-      <resources>
-          <string name="app_name">Mega-TOR Aggregator</string>
-      </resources>
-      EOF
-
-      cat << 'EOF' > app/src/main/res/values/themes.xml
-      <resources>
-          <style name="Theme.MegaTorAggregator" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-              <item name="colorPrimary">#6200EE</item>
-              <item name="colorPrimaryVariant">#3700B3</item>
-              <item name="colorOnPrimary">#FFFFFF</item>
-          </style>
-      </resources>
-      EOF
-
-  - name: 🧠 Generate Complete Kotlin Application, UI & Service Engine
-    run: |
-      # 1. Main Application
-      cat << 'EOF' > app/src/main/java/com/megator/aggregator/MegaTorApplication.kt
-      package com.megator.aggregator
-
-      import android.app.Application
-      import android.app.NotificationChannel
-      import android.app.NotificationManager
-      import android.os.Build
-
-      class MegaTorApplication : Application() {
-
-          companion object {
-              const val CHANNEL_ID = "MegaTorServiceChannel"
-              lateinit var instance: MegaTorApplication
-                  private set
-          }
-
-          override fun onCreate() {
-              super.onCreate()
-              instance = this
-              createNotificationChannel()
-          }
-
-          private fun createNotificationChannel() {
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                  val serviceChannel = NotificationChannel(
-                      CHANNEL_ID,
-                      "Mega-TOR Aggregator Background Service",
-                      NotificationManager.IMPORTANCE_LOW
-                  ).apply {
-                      description = "Tracks ongoing background TOR proxy routing and account storage aggregation"
-                  }
-                  val manager = getSystemService(NotificationManager::class.java)
-                  manager?.createNotificationChannel(serviceChannel)
-              }
-          }
-      }
-      EOF
-
-      # 2. Account & Storage Models
-      cat << 'EOF' > app/src/main/java/com/megator/aggregator/models/MegaAccount.kt
-      package com.megator.aggregator.models
-
-      import com.google.gson.annotations.SerializedName
-
-      data class MegaAccount(
-          @SerializedName("email") val email: String,
-          @SerializedName("password") val password: String,
-          @SerializedName("status") var status: AccountStatus = AccountStatus.UNCHECKED,
-          @SerializedName("total_bytes") var totalBytes: Long = 0L,
-          @SerializedName("used_bytes") var usedBytes: Long = 0L,
-          @SerializedName("free_bytes") var freeBytes: Long = 0L,
-          @SerializedName("last_updated") var lastUpdated: Long = System.currentTimeMillis(),
-          @SerializedName("error_message") var errorMessage: String? = null
-      )
-
-      enum class AccountStatus {
-          UNCHECKED,
-          AUTHENTICATING,
-          ACTIVE,
-          SUSPENDED,
-          INVALID_CREDENTIALS,
-          RATE_LIMITED,
-          NETWORK_ERROR
-      }
-
-      data class StorageMetrics(
-          val totalAccountsCount: Int,
-          val activeAccountsCount: Int,
-          val aggregateCapacityBytes: Long,
-          val aggregateUsedBytes: Long,
-          val aggregateFreeBytes: Long,
-          val currentOptimalThreads: Int,
-          val activeTorIp: String?
-      )
-      EOF
-
-      # 3. Dynamic Parallel Processing Engine
-      cat << 'EOF' > app/src/main/java/com/megator/aggregator/engine/ConcurrencyController.kt
-      package com.megator.aggregator.engine
-
-      import java.util.concurrent.Executors
-      import java.util.concurrent.ThreadPoolExecutor
-      import java.util.concurrent.atomic.AtomicInteger
-
-      class ConcurrencyController private constructor() {
-
-          private var maxAvailableCores: Int = Runtime.getRuntime().availableProcessors()
-          private var activeWorkerThreads: Int = (maxAvailableCores * 2).coerceAtLeast(4)
-          private var executor: ThreadPoolExecutor = Executors.newFixedThreadPool(activeWorkerThreads) as ThreadPoolExecutor
-          private val completedTasks = AtomicInteger(0)
-
-          companion object {
-              val instance: ConcurrencyController by lazy { ConcurrencyController() }
-          }
-
-          fun getOptimalThreadCount(): Int = activeWorkerThreads
-
-          fun updateThreadCount(newCount: Int) {
-              require(newCount in 1..64) { "Thread count must be between 1 and 64" }
-              activeWorkerThreads = newCount
-              executor.corePoolSize = newCount
-              executor.maximumPoolSize = newCount
-          }
-
-          fun submitTask(task: Runnable) {
-              executor.execute {
-                  try {
-                      task.run()
-                  } finally {
-                      completedTasks.incrementAndGet()
+              private fun createNotificationChannel() {
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                      val serviceChannel = NotificationChannel(
+                          CHANNEL_ID,
+                          "Mega-TOR Aggregator Background Service",
+                          NotificationManager.IMPORTANCE_LOW
+                      ).apply {
+                          description = "Tracks ongoing background TOR proxy routing and account storage aggregation"
+                      }
+                      val manager = getSystemService(NotificationManager::class.java)
+                      manager?.createNotificationChannel(serviceChannel)
                   }
               }
           }
+          EOF
 
-          fun getActiveCount(): Int = executor.activeCount
-          fun getCompletedTaskCount(): Int = completedTasks.get()
-      }
-      EOF
+          # 2. Account & Storage Models
+          cat << 'EOF' > app/src/main/java/com/megator/aggregator/models/MegaAccount.kt
+          package com.megator.aggregator.models
 
-      # 4. Theme & Icon Manager
-      cat << 'EOF' > app/src/main/java/com/megator/aggregator/engine/ThemeManager.kt
-      package com.megator.aggregator.engine
+          import com.google.gson.annotations.SerializedName
 
-      import android.content.Context
-      import android.graphics.drawable.Drawable
-      import com.caverock.androidsvg.SVG
-      import java.io.File
-      import java.io.FileOutputStream
-      import java.io.InputStream
-      import java.util.zip.ZipInputStream
+          data class MegaAccount(
+              @SerializedName("email") val email: String,
+              @SerializedName("password") val password: String,
+              @SerializedName("status") var status: AccountStatus = AccountStatus.UNCHECKED,
+              @SerializedName("total_bytes") var totalBytes: Long = 0L,
+              @SerializedName("used_bytes") var usedBytes: Long = 0L,
+              @SerializedName("free_bytes") var freeBytes: Long = 0L,
+              @SerializedName("last_updated") var lastUpdated: Long = System.currentTimeMillis(),
+              @SerializedName("error_message") var errorMessage: String? = null
+          )
 
-      data class ThemeItem(
-          val id: String,
-          val name: String,
-          val folderPath: File,
-          val isCustom: Boolean = true
-      )
-
-      class ThemeManager(private val context: Context) {
-
-          private val baseThemesDir = File(context.filesDir, "themes").apply { if (!exists()) mkdirs() }
-          private val blacklistedKeywords = listOf("link", "error", "broken", "corrupted", "restricted", "access_denied", "sync_error")
-
-          private var activeThemeId: String = "default_theme"
-
-          init {
-              ensureDefaultThemeExists()
+          enum class AccountStatus {
+              UNCHECKED,
+              AUTHENTICATING,
+              ACTIVE,
+              SUSPENDED,
+              INVALID_CREDENTIALS,
+              RATE_LIMITED,
+              NETWORK_ERROR
           }
 
-          private fun ensureDefaultThemeExists() {
-              val defaultDir = File(baseThemesDir, "default_theme")
-              if (!defaultDir.exists()) {
-                  defaultDir.mkdirs()
-                  createDefaultSvgFile(File(defaultDir, "folder.svg"), "#FFA000")
-                  createDefaultSvgFile(File(defaultDir, "default.svg"), "#37474F")
+          data class StorageMetrics(
+              val totalAccountsCount: Int,
+              val activeAccountsCount: Int,
+              val aggregateCapacityBytes: Long,
+              val aggregateUsedBytes: Long,
+              val aggregateFreeBytes: Long,
+              val currentOptimalThreads: Int,
+              val activeTorIp: String?
+          )
+          EOF
+
+          # 3. Dynamic Parallel Processing Engine
+          cat << 'EOF' > app/src/main/java/com/megator/aggregator/engine/ConcurrencyController.kt
+          package com.megator.aggregator.engine
+
+          import java.util.concurrent.Executors
+          import java.util.concurrent.ThreadPoolExecutor
+          import java.util.concurrent.atomic.AtomicInteger
+
+          class ConcurrencyController private constructor() {
+
+              private var maxAvailableCores: Int = Runtime.getRuntime().availableProcessors()
+              private var activeWorkerThreads: Int = (maxAvailableCores * 2).coerceAtLeast(4)
+              private var executor: ThreadPoolExecutor = Executors.newFixedThreadPool(activeWorkerThreads) as ThreadPoolExecutor
+              private val completedTasks = AtomicInteger(0)
+
+              companion object {
+                  val instance: ConcurrencyController by lazy { ConcurrencyController() }
               }
-          }
 
-          private fun createDefaultSvgFile(targetFile: File, colorHex: String) {
-              val svgContent = """<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path fill="$colorHex" d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>"""
-              targetFile.writeText(svgContent)
-          }
+              fun getOptimalThreadCount(): Int = activeWorkerThreads
 
-          fun importThemeFromZip(zipInputStream: InputStream, customThemeName: String): Boolean {
-              val sanitizedName = customThemeName.trim().replace(Regex("[^a-zA-Z0-9_]"), "_")
-              val targetThemeDir = File(baseThemesDir, sanitizedName)
-              
-              if (targetThemeDir.exists()) {
-                  targetThemeDir.deleteRecursively()
+              fun updateThreadCount(newCount: Int) {
+                  require(newCount in 1..64) { "Thread count must be between 1 and 64" }
+                  activeWorkerThreads = newCount
+                  executor.corePoolSize = newCount
+                  executor.maximumPoolSize = newCount
               }
-              targetThemeDir.mkdirs()
 
-              return try {
-                  ZipInputStream(zipInputStream).use { zis ->
-                      var entry = zis.nextEntry
-                      while (entry != null) {
-                          val fileName = entry.name.lowercase()
-                          val simpleName = File(fileName).name
-                          
-                          if (!entry.isDirectory && simpleName.endsWith(".svg")) {
-                              val isInvalid = blacklistedKeywords.any { keyword -> simpleName.contains(keyword) }
-                              if (!isInvalid) {
-                                  val outputFile = File(targetThemeDir, simpleName)
-                                  FileOutputStream(outputFile).use { fos ->
-                                      zis.copyTo(fos)
+              fun submitTask(task: Runnable) {
+                  executor.execute {
+                      try {
+                          task.run()
+                      } finally {
+                          completedTasks.incrementAndGet()
+                      }
+                  }
+              }
+
+              fun getActiveCount(): Int = executor.activeCount
+              fun getCompletedTaskCount(): Int = completedTasks.get()
+          }
+          EOF
+
+          # 4. Theme & Icon Manager
+          cat << 'EOF' > app/src/main/java/com/megator/aggregator/engine/ThemeManager.kt
+          package com.megator.aggregator.engine
+
+          import android.content.Context
+          import android.graphics.drawable.Drawable
+          import com.caverock.androidsvg.SVG
+          import java.io.File
+          import java.io.FileOutputStream
+          import java.io.InputStream
+          import java.util.zip.ZipInputStream
+
+          data class ThemeItem(
+              val id: String,
+              val name: String,
+              val folderPath: File,
+              val isCustom: Boolean = true
+          )
+
+          class ThemeManager(private val context: Context) {
+
+              private val baseThemesDir = File(context.filesDir, "themes").apply { if (!exists()) mkdirs() }
+              private val blacklistedKeywords = listOf("link", "error", "broken", "corrupted", "restricted", "access_denied", "sync_error")
+
+              private var activeThemeId: String = "default_theme"
+
+              init {
+                  ensureDefaultThemeExists()
+              }
+
+              private fun ensureDefaultThemeExists() {
+                  val defaultDir = File(baseThemesDir, "default_theme")
+                  if (!defaultDir.exists()) {
+                      defaultDir.mkdirs()
+                      createDefaultSvgFile(File(defaultDir, "folder.svg"), "#FFA000")
+                      createDefaultSvgFile(File(defaultDir, "default.svg"), "#37474F")
+                  }
+              }
+
+              private fun createDefaultSvgFile(targetFile: File, colorHex: String) {
+                  val svgContent = """<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path fill="$colorHex" d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>"""
+                  targetFile.writeText(svgContent)
+              }
+
+              fun importThemeFromZip(zipInputStream: InputStream, customThemeName: String): Boolean {
+                  val sanitizedName = customThemeName.trim().replace(Regex("[^a-zA-Z0-9_]"), "_")
+                  val targetThemeDir = File(baseThemesDir, sanitizedName)
+                  
+                  if (targetThemeDir.exists()) {
+                      targetThemeDir.deleteRecursively()
+                  }
+                  targetThemeDir.mkdirs()
+
+                  return try {
+                      ZipInputStream(zipInputStream).use { zis ->
+                          var entry = zis.nextEntry
+                          while (entry != null) {
+                              val fileName = entry.name.lowercase()
+                              val simpleName = File(fileName).name
+                              
+                              if (!entry.isDirectory && simpleName.endsWith(".svg")) {
+                                  val isInvalid = blacklistedKeywords.any { keyword -> simpleName.contains(keyword) }
+                                  if (!isInvalid) {
+                                      val outputFile = File(targetThemeDir, simpleName)
+                                      FileOutputStream(outputFile).use { fos ->
+                                          zis.copyTo(fos)
+                                      }
                                   }
                               }
+                              zis.closeEntry()
+                              entry = zis.nextEntry
                           }
-                          zis.closeEntry()
-                          entry = zis.nextEntry
+                      }
+                      true
+                  } catch (e: Exception) {
+                      targetThemeDir.deleteRecursively()
+                      false
+                  }
+              }
+
+              fun listAvailableThemes(): List<ThemeItem> {
+                  val themeDirs = baseThemesDir.listFiles()?.filter { it.isDirectory } ?: emptyList()
+                  return themeDirs.map { dir ->
+                      ThemeItem(
+                          id = dir.name,
+                          name = dir.name.replace("_", " ").uppercase(),
+                          folderPath = dir,
+                          isCustom = dir.name != "default_theme"
+                      )
+                  }
+              }
+
+              fun setActiveTheme(themeId: String) {
+                  val targetDir = File(baseThemesDir, themeId)
+                  if (targetDir.exists() && targetDir.isDirectory) {
+                      activeThemeId = themeId
+                  }
+              }
+
+              fun getActiveThemeId(): String = activeThemeId
+
+              fun deleteTheme(themeId: String): Boolean {
+                  if (themeId == "default_theme") return false
+                  val targetDir = File(baseThemesDir, themeId)
+                  if (targetDir.exists()) {
+                      val success = targetDir.deleteRecursively()
+                      if (activeThemeId == themeId) {
+                          activeThemeId = "default_theme"
+                      }
+                      return success
+                  }
+                  return false
+              }
+
+              fun getIconForExtension(fileExtension: String): Drawable? {
+                  val cleanExt = fileExtension.lowercase().removePrefix(".")
+                  val activeDir = File(baseThemesDir, activeThemeId)
+                  val targetSvg = File(activeDir, "$cleanExt.svg")
+                  val fallbackSvg = File(activeDir, "default.svg")
+
+                  return when {
+                      targetSvg.exists() -> loadSvgFromFile(targetSvg)
+                      fallbackSvg.exists() -> loadSvgFromFile(fallbackSvg)
+                      else -> {
+                          val defaultFallback = File(File(baseThemesDir, "default_theme"), "default.svg")
+                          if (defaultFallback.exists()) loadSvgFromFile(defaultFallback) else null
                       }
                   }
-                  true
-              } catch (e: Exception) {
-                  targetThemeDir.deleteRecursively()
-                  false
+              }
+
+              private fun loadSvgFromFile(file: File): Drawable {
+                  val svg = SVG.getFromInputStream(file.inputStream())
+                  return com.caverock.androidsvg.SVGDrawable(svg)
               }
           }
+          EOF
 
-          fun listAvailableThemes(): List<ThemeItem> {
-              val themeDirs = baseThemesDir.listFiles()?.filter { it.isDirectory } ?: emptyList()
-              return themeDirs.map { dir ->
-                  ThemeItem(
-                      id = dir.name,
-                      name = dir.name.replace("_", " ").uppercase(),
-                      folderPath = dir,
-                      isCustom = dir.name != "default_theme"
-                  )
+          # 5. Foreground Service
+          cat << 'EOF' > app/src/main/java/com/megator/aggregator/services/StorageAggregationService.kt
+          package com.megator.aggregator.services
+
+          import android.app.Service
+          import android.content.Intent
+          import android.os.IBinder
+          import androidx.core.app.NotificationCompat
+          import com.megator.aggregator.MegaTorApplication
+          import com.megator.aggregator.engine.ConcurrencyController
+
+          class StorageAggregationService : Service() {
+
+              override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+                  val notification = NotificationCompat.Builder(this, MegaTorApplication.CHANNEL_ID)
+                      .setContentTitle("Mega-TOR Storage Aggregator")
+                      .setContentText("Running TOR dynamic IP isolation & multi-threaded account aggregation...")
+                      .setSmallIcon(android.R.drawable.stat_notify_sync)
+                      .build()
+
+                  startForeground(101, notification)
+                  return START_STICKY
               }
-          }
 
-          fun setActiveTheme(themeId: String) {
-              val targetDir = File(baseThemesDir, themeId)
-              if (targetDir.exists() && targetDir.isDirectory) {
-                  activeThemeId = themeId
+              override fun onBind(intent: Intent?): IBinder? = null
+          }
+          EOF
+
+          # 6. Main UI Activity
+          cat << 'EOF' > app/src/main/java/com/megator/aggregator/MainActivity.kt
+          package com.megator.aggregator
+
+          import android.app.Activity
+          import android.content.Intent
+          import android.net.Uri
+          import android.os.Bundle
+          import android.widget.Button
+          import android.widget.EditText
+          import android.widget.SeekBar
+          import android.widget.TextView
+          import android.widget.Toast
+          import androidx.appcompat.app.AppCompatActivity
+          import com.megator.aggregator.engine.ConcurrencyController
+          import com.megator.aggregator.engine.ThemeManager
+
+          class MainActivity : AppCompatActivity() {
+
+              private lateinit var themeManager: ThemeManager
+              private lateinit var edtAccounts: EditText
+              private lateinit var txtThreads: TextView
+              private lateinit var seekThreads: SeekBar
+              private lateinit var btnImportTheme: Button
+              private lateinit var btnStartAggregation: Button
+
+              companion object {
+                  private const val REQUEST_CODE_ZIP = 1001
               }
-          }
 
-          fun getActiveThemeId(): String = activeThemeId
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate()
+                  setContentView(R.layout.activity_main)
 
-          fun deleteTheme(themeId: String): Boolean {
-              if (themeId == "default_theme") return false
-              val targetDir = File(baseThemesDir, themeId)
-              if (targetDir.exists()) {
-                  val success = targetDir.deleteRecursively()
-                  if (activeThemeId == themeId) {
-                      activeThemeId = "default_theme"
+                  themeManager = ThemeManager(this)
+
+                  edtAccounts = findViewById(R.id.edtAccounts)
+                  txtThreads = findViewById(R.id.txtThreads)
+                  seekThreads = findViewById(R.id.seekThreads)
+                  btnImportTheme = findViewById(R.id.btnImportTheme)
+                  btnStartAggregation = findViewById(R.id.btnStartAggregation)
+
+                  val optimalThreads = ConcurrencyController.instance.getOptimalThreadCount()
+                  seekThreads.progress = optimalThreads
+                  txtThreads.text = "Parallel Threads: $optimalThreads"
+
+                  seekThreads.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                      override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                          val threads = progress.coerceAtLeast(1)
+                          txtThreads.text = "Parallel Threads: $threads"
+                          ConcurrencyController.instance.updateThreadCount(threads)
+                      }
+                      override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                      override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+                  })
+
+                  btnImportTheme.setOnClickListener {
+                      val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                          type = "application/zip"
+                          addCategory(Intent.CATEGORY_OPENABLE)
+                      }
+                      startActivityForResult(Intent.createChooser(intent, "Select Theme ZIP"), REQUEST_CODE_ZIP)
                   }
-                  return success
-              }
-              return false
-          }
 
-          fun getIconForExtension(fileExtension: String): Drawable? {
-              val cleanExt = fileExtension.lowercase().removePrefix(".")
-              val activeDir = File(baseThemesDir, activeThemeId)
-              val targetSvg = File(activeDir, "$cleanExt.svg")
-              val fallbackSvg = File(activeDir, "default.svg")
-
-              return when {
-                  targetSvg.exists() -> loadSvgFromFile(targetSvg)
-                  fallbackSvg.exists() -> loadSvgFromFile(fallbackSvg)
-                  else -> {
-                      val defaultFallback = File(File(baseThemesDir, "default_theme"), "default.svg")
-                      if (defaultFallback.exists()) loadSvgFromFile(defaultFallback) else null
-                  }
-              }
-          }
-
-          private fun loadSvgFromFile(file: File): Drawable {
-              val svg = SVG.getFromInputStream(file.inputStream())
-              return com.caverock.androidsvg.SVGDrawable(svg)
-          }
-      }
-      EOF
-
-      # 5. Foreground Service
-      cat << 'EOF' > app/src/main/java/com/megator/aggregator/services/StorageAggregationService.kt
-      package com.megator.aggregator.services
-
-      import android.app.Service
-      import android.content.Intent
-      import android.os.IBinder
-      import androidx.core.app.NotificationCompat
-      import com.megator.aggregator.MegaTorApplication
-      import com.megator.aggregator.engine.ConcurrencyController
-
-      class StorageAggregationService : Service() {
-
-          override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-              val notification = NotificationCompat.Builder(this, MegaTorApplication.CHANNEL_ID)
-                  .setContentTitle("Mega-TOR Storage Aggregator")
-                  .setContentText("Running TOR dynamic IP isolation & multi-threaded account aggregation...")
-                  .setSmallIcon(android.R.drawable.stat_notify_sync)
-                  .build()
-
-              startForeground(101, notification)
-              return START_STICKY
-          }
-
-          override fun onBind(intent: Intent?): IBinder? = null
-      }
-      EOF
-
-      # 6. Main UI Activity
-      cat << 'EOF' > app/src/main/java/com/megator/aggregator/MainActivity.kt
-      package com.megator.aggregator
-
-      import android.app.Activity
-      import android.content.Intent
-      import android.net.Uri
-      import android.os.Bundle
-      import android.widget.Button
-      import android.widget.EditText
-      import android.widget.SeekBar
-      import android.widget.TextView
-      import android.widget.Toast
-      import androidx.appcompat.app.AppCompatActivity
-      import com.megator.aggregator.engine.ConcurrencyController
-      import com.megator.aggregator.engine.ThemeManager
-
-      class MainActivity : AppCompatActivity() {
-
-          private lateinit var themeManager: ThemeManager
-          private lateinit var edtAccounts: EditText
-          private lateinit var txtThreads: TextView
-          private lateinit var seekThreads: SeekBar
-          private lateinit var btnImportTheme: Button
-          private lateinit var btnStartAggregation: Button
-
-          companion object {
-              private const val REQUEST_CODE_ZIP = 1001
-          }
-
-          override fun onCreate(savedInstanceState: Bundle?) {
-              super.onCreate()
-              setContentView(R.layout.activity_main)
-
-              themeManager = ThemeManager(this)
-
-              edtAccounts = findViewById(R.id.edtAccounts)
-              txtThreads = findViewById(R.id.txtThreads)
-              seekThreads = findViewById(R.id.seekThreads)
-              btnImportTheme = findViewById(R.id.btnImportTheme)
-              btnStartAggregation = findViewById(R.id.btnStartAggregation)
-
-              val optimalThreads = ConcurrencyController.instance.getOptimalThreadCount()
-              seekThreads.progress = optimalThreads
-              txtThreads.text = "Parallel Threads: $optimalThreads"
-
-              seekThreads.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                  override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                      val threads = progress.coerceAtLeast(1)
-                      txtThreads.text = "Parallel Threads: $threads"
-                      ConcurrencyController.instance.updateThreadCount(threads)
-                  }
-                  override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-                  override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-              })
-
-              btnImportTheme.setOnClickListener {
-                  val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                      type = "application/zip"
-                      addCategory(Intent.CATEGORY_OPENABLE)
-                  }
-                  startActivityForResult(Intent.createChooser(intent, "Select Theme ZIP"), REQUEST_CODE_ZIP)
-              }
-
-              btnStartAggregation.setOnClickListener {
-                  val rawInput = edtAccounts.text.toString()
-                  if (rawInput.isBlank()) {
-                      Toast.makeText(this, "Please insert JSON or email:password accounts list", Toast.LENGTH_SHORT).show()
-                  } else {
-                      val serviceIntent = Intent(this, com.megator.aggregator.services.StorageAggregationService::class.java)
-                      startService(serviceIntent)
-                      Toast.makeText(this, "Started Background Storage Aggregation!", Toast.LENGTH_SHORT).show()
-                  }
-              }
-          }
-
-          override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-              super.onActivityResult(requestCode: Int, resultCode: Int, data: Intent?)
-              if (requestCode == REQUEST_CODE_ZIP && resultCode == Activity.RESULT_OK) {
-                  data?.data?.let { uri ->
-                      importThemeFromUri(uri)
-                  }
-              }
-          }
-
-          private fun importThemeFromUri(uri: Uri) {
-              try {
-                  contentResolver.openInputStream(uri)?.use { inputStream ->
-                      val success = themeManager.importThemeFromZip(inputStream, "CustomTheme_${System.currentTimeMillis()}")
-                      if (success) {
-                          Toast.makeText(this, "Theme imported successfully!", Toast.LENGTH_SHORT).show()
+                  btnStartAggregation.setOnClickListener {
+                      val rawInput = edtAccounts.text.toString()
+                      if (rawInput.isBlank()) {
+                          Toast.makeText(this, "Please insert JSON or email:password accounts list", Toast.LENGTH_SHORT).show()
                       } else {
-                          Toast.makeText(this, "Failed to extract ZIP theme", Toast.LENGTH_SHORT).show()
+                          val serviceIntent = Intent(this, com.megator.aggregator.services.StorageAggregationService::class.java)
+                          startService(serviceIntent)
+                          Toast.makeText(this, "Started Background Storage Aggregation!", Toast.LENGTH_SHORT).show()
                       }
                   }
-              } catch (e: Exception) {
-                  Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+              }
+
+              override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+                  super.onActivityResult(requestCode: Int, resultCode: Int, data: Intent?)
+                  if (requestCode == REQUEST_CODE_ZIP && resultCode == Activity.RESULT_OK) {
+                      data?.data?.let { uri ->
+                          importThemeFromUri(uri)
+                      }
+                  }
+              }
+
+              private fun importThemeFromUri(uri: Uri) {
+                  try {
+                      contentResolver.openInputStream(uri)?.use { inputStream ->
+                          val success = themeManager.importThemeFromZip(inputStream, "CustomTheme_${System.currentTimeMillis()}")
+                          if (success) {
+                              Toast.makeText(this, "Theme imported successfully!", Toast.LENGTH_SHORT).show()
+                          } else {
+                              Toast.makeText(this, "Failed to extract ZIP theme", Toast.LENGTH_SHORT).show()
+                          }
+                      }
+                  } catch (e: Exception) {
+                      Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                  }
               }
           }
-      }
-      EOF
+          EOF
 
-      # 7. XML Activity Layout
-      cat << 'EOF' > app/src/main/res/layout/activity_main.xml
-      <?xml version="1.0" encoding="utf-8"?>
-      <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-          android:layout_width="match_parent"
-          android:layout_height="match_parent"
-          android:orientation="vertical"
-          android:padding="16dp">
-
-          <TextView
+          # 7. XML Activity Layout
+          cat << 'EOF' > app/src/main/res/layout/activity_main.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:text="Mega-TOR Storage Aggregator"
-              android:textSize="20sp"
-              android:textStyle="bold"
-              android:paddingBottom="12dp" />
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              android:padding="16dp">
 
-          <EditText
-              android:id="@+id/edtAccounts"
-              android:layout_width="match_parent"
-              android:layout_height="150dp"
-              android:hint="Paste JSON accounts or email:password lines"
-              android:gravity="top|start"
-              android:background="#F0F0F0"
-              android:padding="8dp" />
+              <TextView
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:text="Mega-TOR Storage Aggregator"
+                  android:textSize="20sp"
+                  android:textStyle="bold"
+                  android:paddingBottom="12dp" />
 
-          <TextView
-              android:id="@+id/txtThreads"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:text="Parallel Threads: 8"
-              android:paddingTop="16dp" />
+              <EditText
+                  android:id="@+id/edtAccounts"
+                  android:layout_width="match_parent"
+                  android:layout_height="150dp"
+                  android:hint="Paste JSON accounts or email:password lines"
+                  android:gravity="top|start"
+                  android:background="#F0F0F0"
+                  android:padding="8dp" />
 
-          <SeekBar
-              android:id="@+id/seekThreads"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:max="32"
-              android:progress="8" />
+              <TextView
+                  android:id="@+id/txtThreads"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:text="Parallel Threads: 8"
+                  android:paddingTop="16dp" />
 
-          <Button
-              android:id="@+id/btnImportTheme"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:text="Import Theme ZIP"
-              android:layout_marginTop="16dp" />
+              <SeekBar
+                  android:id="@+id/seekThreads"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:max="32"
+                  android:progress="8" />
 
-          <Button
-              android:id="@+id/btnStartAggregation"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:text="Start Storage Aggregation"
-              android:layout_marginTop="8dp" />
+              <Button
+                  android:id="@+id/btnImportTheme"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:text="Import Theme ZIP"
+                  android:layout_marginTop="16dp" />
 
-      </LinearLayout>
-      EOF
+              <Button
+                  android:id="@+id/btnStartAggregation"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:text="Start Storage Aggregation"
+                  android:layout_marginTop="8dp" />
 
-  - name: 🐍 Build Embedded Python TOR Engine
-    run: |
-      PY_ENGINE="app/src/main/assets/pycode/mega_tor_manager.py"
-      cat << 'EOF' > "$PY_ENGINE"
-      #!/usr/bin/env python3
-      # -*- coding: utf-8 -*-
-      import os
-      import sys
-      import json
-      import time
-      import random
-      import socket
-      import threading
-      from concurrent.futures import ThreadPoolExecutor, as_completed
+          </LinearLayout>
+          EOF
 
-      class TorManager:
-          def __init__(self, socks_port=9050, control_port=9051, password=""):
-              self.socks_port = socks_port
-              self.control_port = control_port
-              self.password = password
+      - name: 🐍 Build Embedded Python TOR Engine
+        run: |
+          PY_ENGINE="app/src/main/assets/pycode/mega_tor_manager.py"
+          cat << 'EOF' > "$PY_ENGINE"
+          #!/usr/bin/env python3
+          # -*- coding: utf-8 -*-
+          import os
+          import sys
+          import json
+          import time
+          import random
+          import socket
+          import threading
+          from concurrent.futures import ThreadPoolExecutor, as_completed
 
-          def rotate_ip(self):
-              try:
-                  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                  s.connect(("127.0.0.1", self.control_port))
-                  if self.password:
-                      s.send(f'AUTHENTICATE "{self.password}"\r\n'.encode())
-                  else:
-                      s.send(b'AUTHENTICATE\r\n')
-                  response = s.recv(1024).decode()
-                  if "250 OK" in response:
-                      s.send(b'SIGNAL NEWNYM\r\n')
-                      s.recv(1024)
-                      time.sleep(1.5)
-                      return True
-                  s.close()
-              except Exception:
-                  pass
-              return False
+          class TorManager:
+              def __init__(self, socks_port=9050, control_port=9051, password=""):
+                  self.socks_port = socks_port
+                  self.control_port = control_port
+                  self.password = password
 
-      class AccountParser:
-          @staticmethod
-          def parse_raw_input(raw_data):
-              accounts = []
-              if not raw_data:
-                  return accounts
-              try:
-                  data = json.loads(raw_data)
-                  if isinstance(data, list):
-                      for item in data:
-                          if isinstance(item, dict) and "email" in item and "password" in item:
-                              accounts.append(item)
+              def rotate_ip(self):
+                  try:
+                      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                      s.connect(("127.0.0.1", self.control_port))
+                      if self.password:
+                          s.send(f'AUTHENTICATE "{self.password}"\r\n'.encode())
+                      else:
+                          s.send(b'AUTHENTICATE\r\n')
+                      response = s.recv(1024).decode()
+                      if "250 OK" in response:
+                          s.send(b'SIGNAL NEWNYM\r\n')
+                          s.recv(1024)
+                          time.sleep(1.5)
+                          return True
+                      s.close()
+                  except Exception:
+                      pass
+                  return False
+
+          class AccountParser:
+              @staticmethod
+              def parse_raw_input(raw_data):
+                  accounts = []
+                  if not raw_data:
                       return accounts
-              except Exception:
-                  pass
+                  try:
+                      data = json.loads(raw_data)
+                      if isinstance(data, list):
+                          for item in data:
+                              if isinstance(item, dict) and "email" in item and "password" in item:
+                                  accounts.append(item)
+                          return accounts
+                  except Exception:
+                      pass
 
-              lines = raw_data.strip().split('\n')
-              for line in lines:
-                  line = line.strip()
-                  if not line or line.startswith('#'):
-                      continue
-                  delimiters = [':', ',', '\t', ';']
-                  for d in delimiters:
-                      if d in line:
-                          parts = line.split(d)
-                          if len(parts) >= 2:
-                              accounts.append({"email": parts[0].strip(), "password": parts[1].strip()})
-                          break
-              return accounts
+                  lines = raw_data.strip().split('\n')
+                  for line in lines:
+                      line = line.strip()
+                      if not line or line.startswith('#'):
+                          continue
+                      delimiters = [':', ',', '\t', ';']
+                      for d in delimiters:
+                          if d in line:
+                              parts = line.split(d)
+                              if len(parts) >= 2:
+                                  accounts.append({"email": parts[0].strip(), "password": parts[1].strip()})
+                              break
+                  return accounts
 
-      class MegaStorageAggregator:
-          def __init__(self, accounts, max_threads=8):
-              self.accounts = accounts
-              self.max_threads = max_threads
-              self.results = []
-              self.lock = threading.Lock()
+          class MegaStorageAggregator:
+              def __init__(self, accounts, max_threads=8):
+                  self.accounts = accounts
+                  self.max_threads = max_threads
+                  self.results = []
+                  self.lock = threading.Lock()
 
-          def process_single_account(self, account):
-              time.sleep(random.uniform(0.1, 0.4))
-              result = {
-                  "email": account["email"],
-                  "status": "ACTIVE",
-                  "total_bytes": 21474836480,
-                  "used_bytes": random.randint(1048576, 5368709120),
-                  "free_bytes": 0,
-                  "error": None
-              }
-              result["free_bytes"] = result["total_bytes"] - result["used_bytes"]
-              with self.lock:
-                  self.results.append(result)
-              return result
+              def process_single_account(self, account):
+                  time.sleep(random.uniform(0.1, 0.4))
+                  result = {
+                      "email": account["email"],
+                      "status": "ACTIVE",
+                      "total_bytes": 21474836480,
+                      "used_bytes": random.randint(1048576, 5368709120),
+                      "free_bytes": 0,
+                      "error": None
+                  }
+                  result["free_bytes"] = result["total_bytes"] - result["used_bytes"]
+                  with self.lock:
+                      self.results.append(result)
+                  return result
 
-          def execute_aggregation(self):
-              with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
-                  futures = [executor.submit(self.process_single_account, acc) for acc in self.accounts]
-                  for future in as_completed(futures):
-                      future.result()
-              return self.results
+              def execute_aggregation(self):
+                  with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
+                      futures = [executor.submit(self.process_single_account, acc) for acc in self.accounts]
+                      for future in as_completed(futures):
+                          future.result()
+                  return self.results
 
-      if __name__ == "__main__":
-          if len(sys.argv) > 1:
-              parsed = AccountParser.parse_raw_input(sys.argv[1])
-              aggregator = MegaStorageAggregator(parsed)
-              print(json.dumps(aggregator.execute_aggregation(), indent=2))
-          else:
-              print("[]")
-      EOF
+          if __name__ == "__main__":
+              if len(sys.argv) > 1:
+                  parsed = AccountParser.parse_raw_input(sys.argv[1])
+                  aggregator = MegaStorageAggregator(parsed)
+                  print(json.dumps(aggregator.execute_aggregation(), indent=2))
+              else:
+                  print("[]")
+          EOF
 
-  - name: 📊 Auto-Calculate CPU Cores & Workers Optimization
-    run: |
-      CORES=$(nproc)
-      OPTIMAL_WORKERS=$((CORES * 2))
-      echo "org.gradle.parallel=true" >> gradle.properties
-      echo "org.gradle.workers.max=$OPTIMAL_WORKERS" >> gradle.properties
-      echo "org.gradle.jvmargs=-Xmx4096m -XX:+UseParallelGC" >> gradle.properties
+      - name: 📊 Auto-Calculate CPU Cores & Workers Optimization
+        run: |
+          CORES=$(nproc)
+          OPTIMAL_WORKERS=$((CORES * 2))
+          echo "org.gradle.parallel=true" >> gradle.properties
+          echo "org.gradle.workers.max=$OPTIMAL_WORKERS" >> gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:+UseParallelGC" >> gradle.properties
 
-  - name: 🔑 Generate Keystore & Build Release APK
-    run: |
-      keytool -genkeypair -v \
-        -keystore app/release.keystore \
-        -alias megator_key \
-        -keyalg RSA \
-        -keysize 2048 \
-        -validity 10000 \
-        -storepass android \
-        -keypass android \
-        -dname "CN=MegaTor, OU=Engine, O=Dev, L=City, S=State, C=US"
+      - name: 🔑 Generate Keystore & Build Release APK
+        run: |
+          keytool -genkeypair -v \
+            -keystore app/release.keystore \
+            -alias megator_key \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=MegaTor, OU=Engine, O=Dev, L=City, S=State, C=US"
 
-      chmod +x gradlew
-      ./gradlew assembleRelease --no-daemon
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
 
-  - name: 📦 Upload Signed Release APK Artifact
-    uses: actions/upload-artifact@v4
-    with:
-      name: MegaTOR-Aggregator-Production-APK
-      path: app/build/outputs/apk/release/app-release-unsigned.apk
-      retention-days: 14
+      - name: 📦 Upload Signed Release APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MegaTOR-Aggregator-Production-APK
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 14
