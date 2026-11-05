@@ -579,27 +579,50 @@ jobs:
         run: |
           set -euo pipefail
           SOURCE="$RUNNER_TEMP/proot-static"
-          OUT="$RUNNER_TEMP/proot-dist/aarch64"
+          BUILD_OUT="$RUNNER_TEMP/proot-build-aarch64"
+          ARTIFACT_OUT="$RUNNER_TEMP/proot-dist/aarch64"
+
           git clone --depth 1 "$PROOT_SOURCE_REPOSITORY" "$SOURCE"
           chmod +x "$SOURCE/tools/build-static-aarch64.sh"
-          mkdir -p "$OUT"
+          mkdir -p "$BUILD_OUT" "$ARTIFACT_OUT"
+
+          # Keep the compiler's private work directory separate from the
+          # artifact directory. Do not derive REPO_ARTIFACT_DIR from OUT in
+          # the same environment-assignment list: Bash can expand it using
+          # the newly assigned OUT value, causing the following tests to
+          # look in a different directory from the one the build populated.
           (
             cd "$SOURCE"
-            NDK="$ANDROID_NDK_ROOT" \
-            OUT="$RUNNER_TEMP/proot-build-aarch64" \
-            REPO_ARTIFACT_DIR="$OUT" \
+            env \
+              NDK="$ANDROID_NDK_ROOT" \
+              OUT="$BUILD_OUT" \
+              REPO_ARTIFACT_DIR="$ARTIFACT_OUT" \
               ./tools/build-static-aarch64.sh
           )
-          test -s "$OUT/proot"
-          test -s "$OUT/loader"
-          test -s "$OUT/loader32"
-          file "$OUT/proot" | grep -E 'ARM aarch64|AArch64'
+
+          for artifact in proot loader loader32; do
+            if [[ ! -s "$ARTIFACT_OUT/$artifact" ]]; then
+              echo "ERROR: PRoot build did not create $ARTIFACT_OUT/$artifact" >&2
+              echo "Build output directory contents:" >&2
+              find "$BUILD_OUT" -maxdepth 4 -type f -printf '%p (%s bytes)\n' 2>/dev/null | sort >&2 || true
+              echo "Artifact directory contents:" >&2
+              find "$ARTIFACT_OUT" -maxdepth 2 -type f -printf '%p (%s bytes)\n' 2>/dev/null | sort >&2 || true
+              exit 1
+            fi
+          done
+
+          PROOT_FILE_INFO="$(file "$ARTIFACT_OUT/proot")"
+          printf '%s\n' "$PROOT_FILE_INFO"
+          if ! grep -Eqi 'ARM aarch64|AArch64' <<< "$PROOT_FILE_INFO"; then
+            echo "ERROR: Expected an ARM64 PRoot binary, got: $PROOT_FILE_INFO" >&2
+            exit 1
+          fi
 
           JNILIBS="$PROJECT_DIR/app/src/main/jniLibs/arm64-v8a"
           mkdir -p "$JNILIBS" "$PROJECT_DIR/app/src/main/assets/THIRD_PARTY_LICENSES"
-          install -m 0755 "$OUT/proot" "$JNILIBS/libproot.so"
-          install -m 0755 "$OUT/loader" "$JNILIBS/libproot_loader.so"
-          install -m 0755 "$OUT/loader32" "$JNILIBS/libproot_loader32.so"
+          install -m 0755 "$ARTIFACT_OUT/proot" "$JNILIBS/libproot.so"
+          install -m 0755 "$ARTIFACT_OUT/loader" "$JNILIBS/libproot_loader.so"
+          install -m 0755 "$ARTIFACT_OUT/loader32" "$JNILIBS/libproot_loader32.so"
           if [[ -f "$SOURCE/COPYING" ]]; then
             cp "$SOURCE/COPYING" "$PROJECT_DIR/app/src/main/assets/THIRD_PARTY_LICENSES/PROOT-COPYING"
           fi
