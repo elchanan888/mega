@@ -29,9 +29,6 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: 🛠️ Set up Android SDK & Build Tools
-        uses: actions/setup-android@v3
-
       - name: 📁 Generate Complete Project Structure & Native Kotlin Source Code
         run: |
           echo "=========================================="
@@ -186,7 +183,7 @@ jobs:
           </manifest>
           EOF
 
-          # res/values/strings.xml & styles.xml
+          # res/values/strings.xml & themes.xml
           cat << 'EOF' > app/src/main/res/values/strings.xml
           <resources>
               <string name="app_name">Mega-TOR Aggregator</string>
@@ -471,7 +468,6 @@ jobs:
           import android.os.IBinder
           import androidx.core.app.NotificationCompat
           import com.megator.aggregator.MegaTorApplication
-          import com.megator.aggregator.engine.ConcurrencyController
 
           class StorageAggregationService : Service() {
 
