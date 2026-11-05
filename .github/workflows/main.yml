@@ -755,8 +755,8 @@ jobs:
             -keypass android \
             -dname "CN=MegaTor, OU=Engine, O=Dev, L=City, S=State, C=US"
 
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          gradle wrapper
+          gradle assembleRelease --no-daemon
 
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
