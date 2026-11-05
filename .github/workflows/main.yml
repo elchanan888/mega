@@ -540,7 +540,7 @@ jobs:
               }
 
               override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-                  super.onActivityResult(requestCode: Int, resultCode: Int, data: Intent?)
+                  super.onActivityResult(requestCode, resultCode, data: Intent?)
                   if (requestCode == REQUEST_CODE_ZIP && resultCode == Activity.RESULT_OK) {
                       data?.data?.let { uri ->
                           importThemeFromUri(uri)
@@ -749,8 +749,9 @@ jobs:
             -keypass android \
             -dname "CN=MegaTor, OU=Engine, O=Dev, L=City, S=State, C=US"
 
-          gradle wrapper
-          gradle assembleRelease --no-daemon
+          gradle wrapper --gradle-version 8.4
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
 
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
