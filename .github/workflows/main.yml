@@ -729,13 +729,15 @@ jobs:
                   print("[]")
           EOF
 
-      - name: Optimize Gradle Properties
+      - name: Optimize Gradle Properties & Enable AndroidX
         run: |
           CORES=$(nproc)
           OPTIMAL_WORKERS=$((CORES * 2))
           echo "org.gradle.parallel=true" >> gradle.properties
           echo "org.gradle.workers.max=$OPTIMAL_WORKERS" >> gradle.properties
           echo "org.gradle.jvmargs=-Xmx4096m -XX:+UseParallelGC" >> gradle.properties
+          echo "android.useAndroidX=true" >> gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
 
       - name: Build Release APK
         run: |
