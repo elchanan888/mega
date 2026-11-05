@@ -477,7 +477,9 @@ jobs:
           cp "$PROJECT/runtime-requirements.txt" "$RUNTIME_CONTEXT/requirements.txt"
 
           cat > "$RUNTIME_CONTEXT/Dockerfile" <<'DOCKERFILE'
-          FROM --platform=linux/arm64 ubuntu:26.10
+          # Buildx selects linux/arm64 through --platform on the build command.
+          # Do not hard-code FROM --platform; it is redundant and triggers a Docker warning.
+          FROM ubuntu:26.10
           ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 LC_ALL=C.UTF-8
           RUN set -eux; \
               if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then \
@@ -521,6 +523,10 @@ jobs:
               true
           DOCKERFILE
 
+          echo "=== Disk space before ARM64 runtime build ==="
+          df -h "$RUNNER_TEMP" "$PROJECT"
+          docker system df || true
+
           docker buildx build \
             --platform linux/arm64 \
             --load \
@@ -529,13 +535,35 @@ jobs:
             --cache-to type=gha,mode=max,scope=mega-drive-rootfs-arm64 \
             "$RUNTIME_CONTEXT"
 
+          echo "=== Disk space after ARM64 image build ==="
+          df -h "$RUNNER_TEMP" "$PROJECT"
           CONTAINER_ID="$(docker create --platform linux/arm64 mega-drive-linux-rootfs:ci)"
           trap 'docker rm -f "$CONTAINER_ID" >/dev/null 2>&1 || true' EXIT
-          docker export "$CONTAINER_ID" | gzip -1 > "$PROJECT/dist/linux-rootfs-arm64.tar.gz"
-          tar -tzf "$PROJECT/dist/linux-rootfs-arm64.tar.gz" | grep -q '^usr/bin/python3$'
-          tar -tzf "$PROJECT/dist/linux-rootfs-arm64.tar.gz" | grep -q '^usr/bin/mega-cmd-server$'
-          tar -tzf "$PROJECT/dist/linux-rootfs-arm64.tar.gz" | grep -q '^opt/venv/bin/uvicorn$'
-          sha256sum "$PROJECT/dist/linux-rootfs-arm64.tar.gz" > "$PROJECT/dist/linux-rootfs-arm64.tar.gz.sha256"
+
+          RUNTIME_ARCHIVE="$PROJECT/dist/linux-rootfs-arm64.tar.gz"
+          RUNTIME_FILE_LIST="$RUNNER_TEMP/linux-rootfs-arm64-files.txt"
+          echo "Exporting ARM64 root filesystem..."
+          docker export "$CONTAINER_ID" | gzip -1 > "$RUNTIME_ARCHIVE"
+          test -s "$RUNTIME_ARCHIVE"
+          gzip -t "$RUNTIME_ARCHIVE"
+
+          # IMPORTANT: Never pipe tar -t into grep -q under pipefail.
+          # grep -q closes the pipe as soon as it finds a match, which can make
+          # tar fail with "tar: stdout: write error" even when the archive is valid.
+          tar -tzf "$RUNTIME_ARCHIVE" > "$RUNTIME_FILE_LIST"
+          for required_path in \
+            'usr/bin/python3' \
+            'usr/bin/mega-cmd-server' \
+            'opt/venv/bin/uvicorn'; do
+            if ! grep -Fxq -- "$required_path" "$RUNTIME_FILE_LIST"; then
+              echo "ERROR: Linux runtime archive is missing: $required_path" >&2
+              echo "First archive entries:" >&2
+              sed -n '1,80p' "$RUNTIME_FILE_LIST" >&2
+              exit 1
+            fi
+          done
+          rm -f "$RUNTIME_FILE_LIST"
+          sha256sum "$RUNTIME_ARCHIVE" > "$RUNTIME_ARCHIVE.sha256"
           RUNTIME_SHA256="$(cut -d ' ' -f1 "$PROJECT/dist/linux-rootfs-arm64.tar.gz.sha256")"
           RELEASE_TAG="android-runtime-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           RUNTIME_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/linux-rootfs-arm64.tar.gz"
@@ -660,8 +688,17 @@ jobs:
             --ks-pass "pass:$STORE_PASS" --key-pass "pass:$KEY_PASS" \
             --out "$DIST/mega-drive.apk" "$DIST/mega-drive-aligned.apk"
           "$APKSIGNER" verify --verbose "$DIST/mega-drive.apk"
-          unzip -l "$DIST/mega-drive.apk" | grep -q 'lib/arm64-v8a/libproot.so'
-          unzip -l "$DIST/mega-drive.apk" | grep -q 'lib/arm64-v8a/libproot_loader.so'
+          APK_ENTRIES="$RUNNER_TEMP/mega-drive-apk-entries.txt"
+          unzip -Z1 "$DIST/mega-drive.apk" > "$APK_ENTRIES"
+          for required_entry in \
+            'lib/arm64-v8a/libproot.so' \
+            'lib/arm64-v8a/libproot_loader.so'; do
+            if ! grep -Fxq -- "$required_entry" "$APK_ENTRIES"; then
+              echo "ERROR: APK is missing required native library: $required_entry" >&2
+              exit 1
+            fi
+          done
+          rm -f "$APK_ENTRIES"
           sha256sum "$DIST/mega-drive.apk" > "$DIST/mega-drive.apk.sha256"
           cat > "$DIST/build-manifest.json" <<EOF
           {
